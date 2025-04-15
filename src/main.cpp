@@ -5,7 +5,9 @@
 #include <HTTPClient.h>
 #include <Update.h>
 
-const char* firmwareURL = "https://github.com/phuongnha922017/IoT-CO3038/blob/main/firmware/firmware.json";
+const char* firmware_version_URL = "https://github.com/phuongnha922017/IoT-CO3038/blob/main/firmware/firmware.json";
+const char* firmware_URL = "https://github.com/phuongnha922017/IoT-CO3038/blob/main/firmware/firmware.bin";
+
 #define firmwareVersion "1.0"
 
 const char* ssid = "...";
@@ -32,7 +34,7 @@ TaskHandle_t dhtTaskHandle;
 TaskHandle_t sendDataTaskHandle;
 TaskHandle_t wifiReconnectTaskHandle;
 TaskHandle_t mqttReconnectTaskHandle;
-TaskHandle_t otaHandle
+TaskHandle_t otaHandle;
 
 
 
@@ -161,38 +163,6 @@ void sendDataTask(void *pvParameters) {
         vTaskDelay(pdMS_TO_TICKS(5000));  // Send every 5 seconds
     }
 }
-
-void checkAndUpdateFirmware(void *pvParameter) {
-    while (1) {
-        if (WiFi.status() == WL_CONNECTED) {
-            HTTPClient http;
-            http.begin(firmwareURL);
-    
-            int httpCode = http.GET();
-            if (httpCode == HTTP_CODE_OK) {
-                String payload = http.getString();
-                Serial.println("Version info: " + payload);
-            
-                int verIndex = payload.indexOf("\"version\":\"") + 11;
-                int verEndIndex = payload.indexOf("\"", verIndex);
-                String newVersion = payload.substring(verIndex, verEndIndex);
-                Serial.println("Latest version: " + newVersion);
-    
-                if (newVersion != firmwareVersion) {
-                    Serial.println("New firmware detected. Starting OTA...");
-                    performOTA(firmwareURL);
-                } else {
-                    Serial.println("Firmware is up to date.");
-                }
-            } else {
-                Serial.println("Failed to fetch version info, HTTP code: " + String(httpCode));
-            }
-            http.end();
-        }
-        vTaskDelay(60000)
-    }
-}
-  
 void performOTA(const char* url) {
     WiFiClient client;
     HTTPClient http;
@@ -226,6 +196,39 @@ void performOTA(const char* url) {
         }
         http.end();
     }
+
+void checkAndUpdateFirmware(void *pvParameter) {
+    while (1) {
+        if (WiFi.status() == WL_CONNECTED) {
+            HTTPClient http;
+            http.begin(firmware_version_URL);
+    
+            int httpCode = http.GET();
+            if (httpCode == HTTP_CODE_OK) {
+                String payload = http.getString();
+                Serial.println("Version info: " + payload);
+            
+                int verIndex = payload.indexOf("\"version\":\"") + 11;
+                int verEndIndex = payload.indexOf("\"", verIndex);
+                String newVersion = payload.substring(verIndex, verEndIndex);
+                Serial.println("Latest version: " + newVersion);
+    
+                if (newVersion != firmwareVersion) {
+                    Serial.println("New firmware detected. Starting OTA...");
+                    performOTA(firmware_URL);
+                } else {
+                    Serial.println("Firmware is up to date.");
+                }
+            } else {
+                Serial.println("Failed to fetch version info, HTTP code: " + String(httpCode));
+            }
+            http.end();
+        }
+        vTaskDelay(60000);
+    }
+}
+  
+
 void setup() {
     Serial.begin(115200);
     pinMode(LED_PIN, OUTPUT);
